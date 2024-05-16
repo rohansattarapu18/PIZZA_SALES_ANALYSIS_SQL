@@ -112,4 +112,48 @@ The following CSV files are used in this project:
         FROM order_details od
         JOIN pizzas p ON od.pizza_id = p.pizza_id
     )
-    SELECT od.pizza_id, (SUM(od.quantity * p
+    SELECT od.pizza_id, 
+           (SUM(od.quantity * p.price) / tr.total) * 100 AS percentage_contribution
+    FROM order_details od
+    JOIN pizzas p ON od.pizza_id = p.pizza_id
+    CROSS JOIN total_revenue tr
+    GROUP BY od.pizza_id, tr.total;
+    ```
+
+2. **Analyze the cumulative revenue generated over time:**
+    ```sql
+    SELECT o.date, 
+           SUM(od.quantity * p.price) AS daily_revenue, 
+           SUM(SUM(od.quantity * p.price)) OVER (ORDER BY o.date) AS cumulative_revenue
+    FROM order_details od
+    JOIN pizzas p ON od.pizza_id = p.pizza_id
+    JOIN orders o ON od.order_id = o.order_id
+    GROUP BY o.date
+    ORDER BY o.date;
+    ```
+
+3. **Determine the top 3 most ordered pizza types based on revenue for each pizza category:**
+    ```sql
+    SELECT category, pizza_id, total_revenue
+    FROM (
+        SELECT pt.category, 
+               od.pizza_id, 
+               SUM(od.quantity * p.price) AS total_revenue,
+               ROW_NUMBER() OVER (PARTITION BY pt.category ORDER BY SUM(od.quantity * p.price) DESC) AS rn
+        FROM order_details od
+        JOIN pizzas p ON od.pizza_id = p.pizza_id
+        JOIN pizza_types pt ON p.pizza_type_id = pt.pizza_type_id
+        GROUP BY pt.category, od.pizza_id
+    ) ranked
+    WHERE rn <= 3;
+    ```
+
+## How to Use
+
+1. Ensure you have the necessary CSV files (`order_details.csv`, `orders.csv`, `pizza_types.csv`, `pizzas.csv`) in your working directory.
+2. Load the data into your SQL database.
+3. Execute the provided SQL queries to analyze the data as per your requirements.
+
+## Author
+
+Rohan Sattarapu
